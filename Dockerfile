@@ -45,6 +45,8 @@ RUN docker-php-ext-configure gd \
     pdo_mysql \
     zip
 
+RUN a2dismod mpm_event && a2enmod mpm_prefork
+
 RUN mkdir -p /var/www/akaunting \
  && curl -Lo /tmp/akaunting.zip 'https://akaunting.com/download.php?version=latest&utm_source=docker&utm_campaign=developers' \
  && unzip /tmp/akaunting.zip -d /var/www/html \
