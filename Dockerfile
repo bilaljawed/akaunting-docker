@@ -45,6 +45,7 @@ RUN docker-php-ext-configure gd \
     pdo_mysql \
     zip
 
+# --- FIX: Disable conflicting MPM modules ---
 RUN a2dismod mpm_event && a2enmod mpm_prefork
 
 RUN mkdir -p /var/www/akaunting \
@@ -54,6 +55,9 @@ RUN mkdir -p /var/www/akaunting \
 
 COPY files/akaunting.sh /usr/local/bin/akaunting.sh
 COPY files/html /var/www/html
+
+# Ensure script is executable
+RUN chmod +x /usr/local/bin/akaunting.sh
 
 ENTRYPOINT ["/usr/local/bin/akaunting.sh"]
 CMD ["--start"]
