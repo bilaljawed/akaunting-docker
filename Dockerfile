@@ -57,12 +57,16 @@ RUN mkdir -p /var/www/akaunting \
 COPY files/akaunting.sh /usr/local/bin/akaunting.sh
 COPY files/html /var/www/html
 
-# 5. CRITICAL FIX: Physically delete the conflicting config files
-# We do this LAST to ensure nothing else re-adds them.
-RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
- && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
- && a2enmod mpm_prefork \
- && chmod +x /usr/local/bin/akaunting.sh
+# --- FINAL FIX: Create a wrapper script to force-kill the conflict at runtime ---
+RUN echo '#!/bin/bash\n\
+echo "Running Railway MPM Fix..."\n\
+rm -f /etc/apache2/mods-enabled/mpm_event.load\n\
+rm -f /etc/apache2/mods-enabled/mpm_event.conf\n\
+a2enmod mpm_prefork\n\
+echo "Fix applied. Starting Akaunting..."\n\
+exec /usr/local/bin/akaunting.sh "$@"' > /usr/local/bin/railway-start.sh \
+ && chmod +x /usr/local/bin/railway-start.sh
 
-ENTRYPOINT ["/usr/local/bin/akaunting.sh"]
+# Use our custom wrapper instead of the default script
+ENTRYPOINT ["/usr/local/bin/railway-start.sh"]
 CMD ["--start"]
