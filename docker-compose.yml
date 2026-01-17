@@ -1,32 +1,36 @@
 version: '3.7'
 
 services:
-
   akaunting:
-    container_name: akaunting
-    image: docker.io/akaunting/akaunting:latest
     build:
       context: .
+      dockerfile: Dockerfile
     ports:
-      - 8080:80
+      - "${PORT:-8080}:80"
     volumes:
       - akaunting-data:/var/www/html
     restart: unless-stopped
     env_file:
       - env/run.env
     environment:
-      - AKAUNTING_SETUP
+      - AKAUNTING_SETUP=${AKAUNTING_SETUP:-true}
+      - DB_HOST=akaunting-db
+      - DB_PORT=3306
     depends_on:
       - akaunting-db
 
   akaunting-db:
-    container_name: akaunting-db
-    image: mariadb
+    image: mariadb:10.6
     volumes:
       - akaunting-db:/var/lib/mysql
     restart: unless-stopped
     env_file:
       - env/db.env
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-akaunting}
+      - MYSQL_USER=${MYSQL_USER:-akaunting}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
 
 volumes:
   akaunting-data:
