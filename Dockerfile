@@ -3,7 +3,7 @@ FROM php:8.1-apache
 ARG AKAUNTING_DOCKERFILE_VERSION=0.1
 ARG SUPPORTED_LOCALES="en_US.UTF-8"
 
-# Install dependencies
+# 1. Install dependencies
 RUN apt-get update \
  && apt-get -y upgrade --no-install-recommends \
  && apt-get install -y \
@@ -29,12 +29,12 @@ RUN apt-get update \
     --no-install-recommends \
  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Generate locales
+# 2. Setup Locales
 RUN for locale in ${SUPPORTED_LOCALES}; do \
     sed -i 's/^# '"${locale}/${locale}/" /etc/locale.gen; done \
  && locale-gen
 
-# Configure PHP extensions
+# 3. Setup PHP Extensions
 RUN docker-php-ext-configure gd \
     --with-freetype \
     --with-jpeg \
@@ -48,11 +48,7 @@ RUN docker-php-ext-configure gd \
     pdo_mysql \
     zip
 
-# --- FIX: Disable conflicting MPM module ---
-RUN a2dismod mpm_event && a2enmod mpm_prefork
-# -------------------------------------------
-
-# Download and install Akaunting
+# 4. Download Akaunting
 RUN mkdir -p /var/www/akaunting \
  && curl -Lo /tmp/akaunting.zip 'https://akaunting.com/download.php?version=latest&utm_source=docker&utm_campaign=developers' \
  && unzip /tmp/akaunting.zip -d /var/www/html \
@@ -61,8 +57,12 @@ RUN mkdir -p /var/www/akaunting \
 COPY files/akaunting.sh /usr/local/bin/akaunting.sh
 COPY files/html /var/www/html
 
-# Ensure script is executable
-RUN chmod +x /usr/local/bin/akaunting.sh
+# 5. CRITICAL FIX: Physically delete the conflicting config files
+# We do this LAST to ensure nothing else re-adds them.
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load \
+ && rm -f /etc/apache2/mods-enabled/mpm_event.conf \
+ && a2enmod mpm_prefork \
+ && chmod +x /usr/local/bin/akaunting.sh
 
 ENTRYPOINT ["/usr/local/bin/akaunting.sh"]
 CMD ["--start"]
