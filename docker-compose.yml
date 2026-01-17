@@ -2,6 +2,7 @@ version: '3.7'
 
 services:
   akaunting:
+    container_name: akaunting
     build:
       context: .
       dockerfile: Dockerfile
@@ -10,28 +11,18 @@ services:
     volumes:
       - akaunting-data:/var/www/html
     restart: unless-stopped
-    env_file:
-      - env/run.env
     environment:
+      # Database connection (using your provided credentials)
+      - DB_CONNECTION=mysql
+      - DB_HOST=yamanote.proxy.rlwy.net
+      - DB_PORT=12653
+      - DB_DATABASE=railway
+      - DB_USERNAME=root
+      - DB_PASSWORD=tqVKMOqWXDdjumrMtjOvSlKADSdOrlrJ
+      
+      # App Settings
+      - APP_URL=https://${RAILWAY_PUBLIC_DOMAIN:-localhost}
       - AKAUNTING_SETUP=${AKAUNTING_SETUP:-true}
-      - DB_HOST=akaunting-db
-      - DB_PORT=3306
-    depends_on:
-      - akaunting-db
-
-  akaunting-db:
-    image: mariadb:10.6
-    volumes:
-      - akaunting-db:/var/lib/mysql
-    restart: unless-stopped
-    env_file:
-      - env/db.env
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE:-akaunting}
-      - MYSQL_USER=${MYSQL_USER:-akaunting}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
 
 volumes:
   akaunting-data:
-  akaunting-db:
