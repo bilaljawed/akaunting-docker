@@ -48,25 +48,34 @@ RUN docker-php-ext-configure gd \
     pdo_mysql \
     zip
 
-# 4. Download Akaunting
-RUN mkdir -p /var/www/akaunting \
+# 4. Download Akaunting to a BACKUP location (Not /var/www/html directly)
+RUN mkdir -p /usr/src/akaunting \
  && curl -Lo /tmp/akaunting.zip 'https://akaunting.com/download.php?version=latest&utm_source=docker&utm_campaign=developers' \
- && unzip /tmp/akaunting.zip -d /var/www/html \
+ && unzip /tmp/akaunting.zip -d /usr/src/akaunting \
  && rm -f /tmp/akaunting.zip
 
 COPY files/akaunting.sh /usr/local/bin/akaunting.sh
-COPY files/html /var/www/html
+# We copy default html files to backup too, just in case
+COPY files/html /usr/src/akaunting
 
-# --- FINAL FIX: Create a wrapper script to force-kill the conflict at runtime ---
+# --- FINAL FIX: Restore files if Volume is empty ---
 RUN echo '#!/bin/bash\n\
 echo "Running Railway MPM Fix..."\n\
 rm -f /etc/apache2/mods-enabled/mpm_event.load\n\
 rm -f /etc/apache2/mods-enabled/mpm_event.conf\n\
 a2enmod mpm_prefork\n\
+\n\
+# CHECK: Is the volume empty? If so, fill it from backup.\n\
+if [ ! -f /var/www/html/artisan ]; then\n\
+    echo "Volume is empty! Copying Akaunting source files..."\n\
+    cp -rT /usr/src/akaunting /var/www/html\n\
+    chown -R www-data:www-data /var/www/html\n\
+fi\n\
+\n\
 echo "Fix applied. Starting Akaunting..."\n\
 exec /usr/local/bin/akaunting.sh "$@"' > /usr/local/bin/railway-start.sh \
  && chmod +x /usr/local/bin/railway-start.sh
 
-# Use our custom wrapper instead of the default script
+# Use our custom wrapper
 ENTRYPOINT ["/usr/local/bin/railway-start.sh"]
 CMD ["--start"]
